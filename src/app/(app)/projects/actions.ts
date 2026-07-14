@@ -4,14 +4,29 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import * as projectsService from "@/lib/services/projects";
 import type { ProjectInput } from "@/lib/services/projects";
+import { getTemplate } from "@/lib/services/templates";
+import { createTasksFromTemplate } from "@/lib/services/tasks";
 
-export async function createProjectAction(input: ProjectInput) {
+export async function createProjectAction(
+  input: ProjectInput,
+  templateId?: string
+) {
   if (!input.name.trim()) throw new Error("Naam is verplicht");
 
   const supabase = await createClient();
   const project = await projectsService.createProject(supabase, input);
+
+  if (templateId) {
+    const template = await getTemplate(supabase, templateId);
+    if (template) {
+      await createTasksFromTemplate(supabase, project.id, template.tasks);
+    }
+  }
+
   revalidatePath("/projects");
   revalidatePath("/");
+  revalidatePath("/board");
+  revalidatePath("/list");
   return project;
 }
 

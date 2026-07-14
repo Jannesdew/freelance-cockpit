@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FolderPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { listProjects } from "@/lib/services/projects";
+import { listTemplates } from "@/lib/services/templates";
 import { ProjectCard } from "@/components/projects/project-card";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -16,7 +17,11 @@ export default async function ProjectsPage({
   const showArchived = archived === "1";
 
   const supabase = await createClient();
-  const projects = await listProjects(supabase, { includeArchived: showArchived });
+  const [projects, templates] = await Promise.all([
+    listProjects(supabase, { includeArchived: showArchived }),
+    listTemplates(supabase),
+  ]);
+  const templateOptions = templates.map((t) => ({ id: t.id, name: t.name }));
   const visibleProjects = showArchived
     ? projects.filter((p) => p.archived_at !== null)
     : projects;
@@ -36,7 +41,10 @@ export default async function ProjectsPage({
           >
             {showArchived ? "Actieve projecten" : "Gearchiveerde projecten"}
           </Button>
-          <ProjectFormDialog trigger={<Button>Nieuw project</Button>} />
+          <ProjectFormDialog
+            templates={templateOptions}
+            trigger={<Button>Nieuw project</Button>}
+          />
         </div>
       </div>
 
@@ -52,7 +60,10 @@ export default async function ProjectsPage({
             }
             action={
               !showArchived && (
-                <ProjectFormDialog trigger={<Button>Nieuw project</Button>} />
+                <ProjectFormDialog
+            templates={templateOptions}
+            trigger={<Button>Nieuw project</Button>}
+          />
               )
             }
           />

@@ -42,6 +42,7 @@ export const TASK_URGENCY_LABELS: Record<TaskUrgency, string> = {
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 type TaskRow = Database["public"]["Tables"]["tasks"]["Row"];
 type ProjectProgressRow = Database["public"]["Views"]["project_progress"]["Row"];
+type ProjectTemplateRow = Database["public"]["Tables"]["project_templates"]["Row"];
 
 export type Project = Omit<ProjectRow, "status"> & { status: ProjectStatus };
 export type Task = Omit<TaskRow, "status" | "urgency"> & {
@@ -65,6 +66,19 @@ export function toTask(row: TaskRow): Task {
     status: row.status as TaskStatus,
     urgency: row.urgency as TaskUrgency,
   };
+}
+
+export type ProjectTemplateTask = {
+  title: string;
+  urgency?: TaskUrgency;
+};
+
+export type ProjectTemplate = Omit<ProjectTemplateRow, "tasks"> & {
+  tasks: ProjectTemplateTask[];
+};
+
+export function toProjectTemplate(row: ProjectTemplateRow): ProjectTemplate {
+  return { ...row, tasks: (row.tasks as ProjectTemplateTask[] | null) ?? [] };
 }
 
 export function toProjectWithProgress(

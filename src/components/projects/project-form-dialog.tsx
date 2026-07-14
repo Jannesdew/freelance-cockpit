@@ -32,11 +32,15 @@ import { uploadProjectCover } from "@/lib/services/storage";
 import { PROJECT_STATUS_LABELS, PROJECT_STATUSES, type ProjectStatus } from "@/lib/types";
 import type { ProjectWithProgress } from "@/lib/types";
 
+const NO_TEMPLATE_VALUE = "none";
+
 export function ProjectFormDialog({
   project,
+  templates = [],
   trigger,
 }: {
   project?: ProjectWithProgress;
+  templates?: { id: string; name: string }[];
   trigger: React.ReactElement;
 }) {
   const router = useRouter();
@@ -49,6 +53,7 @@ export function ProjectFormDialog({
   const [description, setDescription] = useState(project?.description ?? "");
   const [startDate, setStartDate] = useState(project?.start_date ?? "");
   const [endDate, setEndDate] = useState(project?.end_date ?? "");
+  const [templateId, setTemplateId] = useState<string>(NO_TEMPLATE_VALUE);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(
     project?.cover_image_url ?? null
@@ -87,7 +92,10 @@ export function ProjectFormDialog({
         await updateProjectAction(project.id, input);
         toast.success("Project bijgewerkt");
       } else {
-        await createProjectAction(input);
+        await createProjectAction(
+          input,
+          templateId === NO_TEMPLATE_VALUE ? undefined : templateId
+        );
         toast.success("Project aangemaakt");
       }
       setOpen(false);
@@ -142,6 +150,33 @@ export function ProjectFormDialog({
               onChange={(e) => setName(e.target.value)}
             />
           </div>
+          {!isEditing && templates.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="template">Sjabloon (optioneel)</Label>
+              <Select value={templateId} onValueChange={(v) => setTemplateId(v ?? NO_TEMPLATE_VALUE)}>
+                <SelectTrigger id="template" className="w-full">
+                  <SelectValue>
+                    {(value: string) =>
+                      value === NO_TEMPLATE_VALUE
+                        ? "Geen sjabloon"
+                        : templates.find((t) => t.id === value)?.name
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_TEMPLATE_VALUE}>Geen sjabloon</SelectItem>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Voegt de taken uit het sjabloon direct toe aan dit project.
+              </p>
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <Label htmlFor="client_name">Klantnaam</Label>
             <Input

@@ -8,6 +8,7 @@ import {
   FolderKanban,
   Kanban,
   LayoutDashboard,
+  LayoutTemplate,
   List,
   LogOut,
   Moon,
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { href: "/projects", label: "Projecten", icon: FolderKanban },
   { href: "/board", label: "Board", icon: Kanban },
   { href: "/list", label: "Lijst", icon: List },
+  { href: "/templates", label: "Sjablonen", icon: LayoutTemplate },
 ];
 
 export function AppSidebar({

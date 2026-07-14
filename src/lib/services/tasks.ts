@@ -193,6 +193,32 @@ export async function quickCreateTask(
   });
 }
 
+export async function createTasksFromTemplate(
+  client: Client,
+  projectId: string,
+  templateTasks: { title: string; urgency?: TaskUrgency }[]
+): Promise<void> {
+  if (templateTasks.length === 0) return;
+
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) throw new Error("Niet ingelogd");
+
+  const { error } = await client.from("tasks").insert(
+    templateTasks.map((t, index) => ({
+      title: t.title,
+      urgency: t.urgency ?? "normal",
+      status: "backlog" as TaskStatus,
+      project_id: projectId,
+      position: index,
+      user_id: user.id,
+    }))
+  );
+
+  if (error) throw error;
+}
+
 export async function updateTask(
   client: Client,
   id: string,
