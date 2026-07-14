@@ -1,0 +1,187 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/database.types";
+import { toTask, type Task, type TaskStatus, type TaskUrgency } from "@/lib/types";
+
+type Client = SupabaseClient<Database>;
+
+export type TaskInput = {
+  title: string;
+  description?: string | null;
+  project_id?: string | null;
+  status?: TaskStatus;
+  urgency?: TaskUrgency;
+  deadline?: string | null;
+  position?: number;
+};
+
+export type TaskFilters = {
+  projectId?: string | "internal";
+  status?: TaskStatus;
+  urgency?: TaskUrgency;
+  deadlineFrom?: string;
+  deadlineTo?: string;
+  search?: string;
+  sort?: "title" | "deadline" | "urgency" | "status" | "created_at";
+  sortDir?: "asc" | "desc";
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyFilters(query: any, filters: TaskFilters) {
+  if (filters.projectId === "internal") {
+    query = query.is("project_id", null);
+  } else if (filters.projectId) {
+    query = query.eq("project_id", filters.projectId);
+  }
+  if (filters.status) query = query.eq("status", filters.status);
+  if (filters.urgency) query = query.eq("urgency", filters.urgency);
+  if (filters.deadlineFrom) query = query.gte("deadline", filters.deadlineFrom);
+  if (filters.deadlineTo) query = query.lte("deadline", filters.deadlineTo);
+  if (filters.search) query = query.ilike("title", `%${filters.search}%`);
+  return query;
+}
+
+export async function listTasks(
+  client: Client,
+  filters: TaskFilters = {}
+): Promise<Task[]> {
+  let query = client.from("tasks").select("*");
+  query = applyFilters(query, filters);
+
+  const sortColumn = filters.sort ?? "created_at";
+  const ascending = filters.sortDir ? filters.sortDir === "asc" : false;
+  query = query.order(sortColumn, { ascending, nullsFirst: false });
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map(toTask);
+}
+
+export async function listTasksForBoard(
+  client: Client,
+  filters: Omit<TaskFilters, "sort" | "sortDir" | "status"> = {}
+): Promise<Task[]> {
+  let query = client.from("tasks").select("*");
+  query = applyFilters(query, filters);
+  query = query.order("status").order("position");
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map(toTask);
+}
+
+export async function getDashboardUrgentTasks(client: Client): Promise<Task[]> {
+  const today = new Date();
+  const inSevenDays = new Date(today);
+  inSevenDays.setDate(inSevenDays.getDate() + 7);
+  const deadlineCutoff = inSevenDays.toISOString().slice(0, 10);
+
+  const { data, error } = await client
+    .from("tasks")
+    .select("*")
+    .neq("status", "done")
+    .or(`deadline.lte.${deadlineCutoff},urgency.in.(high,urgent)`)
+    .order("deadline", { ascending: true, nullsFirst: false });
+
+  if (error) throw error;
+  return (data ?? []).map(toTask);
+}
+
+export async function getTaskStatusCounts(
+  client: Client
+): Promise<Record<TaskStatus, number>> {
+  const { data, error } = await client.from("tasks").select("status");
+  if (error) throw error;
+
+  const counts: Record<TaskStatus, number> = {
+    backlog: 0,
+    todo: 0,
+    doing: 0,
+    feedback: 0,
+    done: 0,
+  };
+  for (const row of data ?? []) {
+    counts[row.status as TaskStatus] += 1;
+  }
+  return counts;
+}
+
+export async function getInternalTasks(client: Client): Promise<Task[]> {
+  const { data, error } = await client
+    .from("tasks")
+    .select("*")
+    .is("project_id", null)
+    .order("position");
+
+  if (error) throw error;
+  return (data ?? []).map(toTask);
+}
+
+export async function createTask(client: Client, input: TaskInput): Promise<Task> {
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  if (!user) throw new Error("Niet ingelogd");
+
+  const { data, error } = await client
+    .from("tasks")
+    .insert({ ...input, user_id: user.id })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return toTask(data);
+}
+
+export async function quickCreateTask(
+  client: Client,
+  { title, projectId }: { title: string; projectId?: string | "internal" }
+): Promise<Task> {
+  return createTask(client, {
+    title,
+    project_id: projectId && projectId !== "internal" ? projectId : null,
+    status: "backlog",
+    urgency: "normal",
+  });
+}
+
+export async function updateTask(
+  client: Client,
+  id: string,
+  patch: Partial<TaskInput>
+): Promise<Task> {
+  const { data, error } = await client
+    .from("tasks")
+    .update(patch)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return toTask(data);
+}
+
+export async function updateTaskStatus(
+  client: Client,
+  id: string,
+  status: TaskStatus
+): Promise<Task> {
+  return updateTask(client, id, { status });
+}
+
+export async function reorderTasks(
+  client: Client,
+  updates: { id: string; status: TaskStatus; position: number }[]
+): Promise<void> {
+  const results = await Promise.all(
+    updates.map(({ id, status, position }) =>
+      client.from("tasks").update({ status, position }).eq("id", id)
+    )
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw failed.error;
+}
+
+export async function deleteTask(client: Client, id: string): Promise<void> {
+  const { error } = await client.from("tasks").delete().eq("id", id);
+  if (error) throw error;
+}
