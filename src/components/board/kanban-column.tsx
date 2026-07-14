@@ -3,6 +3,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { TaskCard } from "@/components/board/task-card";
+import { TaskStatusIcon } from "@/components/projects/status-badge";
 import { TASK_STATUS_LABELS, type Task, type TaskStatus } from "@/lib/types";
 
 export function KanbanColumn({
@@ -21,7 +22,10 @@ export function KanbanColumn({
   return (
     <div className="flex w-72 shrink-0 flex-col rounded-lg bg-muted/40">
       <div className="flex items-center justify-between px-3 py-2">
-        <span className="text-sm font-medium">{TASK_STATUS_LABELS[status]}</span>
+        <span className="flex items-center gap-1.5 text-sm font-medium">
+          <TaskStatusIcon status={status} />
+          {TASK_STATUS_LABELS[status]}
+        </span>
         <span className="text-xs text-muted-foreground">{tasks.length}</span>
       </div>
       <SortableContext

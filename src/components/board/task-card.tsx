@@ -4,6 +4,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { UrgencyDot } from "@/components/tasks/urgency-badge";
+import { DeadlineLabel } from "@/components/tasks/deadline-label";
 import type { Task } from "@/lib/types";
 
 export function TaskCard({
@@ -23,9 +24,6 @@ export function TaskCard({
     transition,
   };
 
-  const isOverdue =
-    task.deadline && task.status !== "done" && task.deadline < new Date().toISOString().slice(0, 10);
-
   return (
     <div
       ref={setNodeRef}
@@ -44,11 +42,7 @@ export function TaskCard({
       </div>
       <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
         <span>{projectName ?? "Intern"}</span>
-        {task.deadline && (
-          <span className={cn(isOverdue && "font-medium text-red-600 dark:text-red-400")}>
-            {task.deadline}
-          </span>
-        )}
+        <DeadlineLabel deadline={task.deadline} status={task.status} />
       </div>
     </div>
   );

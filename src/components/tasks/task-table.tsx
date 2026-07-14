@@ -59,28 +59,21 @@ function SortableHead({
   );
 }
 
-export function TaskTable({
+function TaskTableGroup({
   tasks,
   projects,
+  sort,
+  sortDir,
   currentParams,
+  showProjectColumn,
 }: {
   tasks: Task[];
   projects: { id: string; name: string }[];
+  sort: string;
+  sortDir: string;
   currentParams: Record<string, string | undefined>;
+  showProjectColumn: boolean;
 }) {
-  const sort = currentParams.sort ?? "created_at";
-  const sortDir = currentParams.sortDir ?? "desc";
-
-  if (tasks.length === 0) {
-    return (
-      <EmptyState
-        icon={SearchX}
-        title="Geen taken gevonden"
-        description="Pas de filters aan of maak een nieuwe taak aan."
-      />
-    );
-  }
-
   return (
     <div className="rounded-lg border">
       <Table>
@@ -89,7 +82,7 @@ export function TaskTable({
             <SortableHead column="title" sort={sort} sortDir={sortDir} currentParams={currentParams}>
               Titel
             </SortableHead>
-            <TableHead>Project</TableHead>
+            {showProjectColumn && <TableHead>Project</TableHead>}
             <SortableHead column="status" sort={sort} sortDir={sortDir} currentParams={currentParams}>
               Status
             </SortableHead>
@@ -103,10 +96,85 @@ export function TaskTable({
         </TableHeader>
         <TableBody>
           {tasks.map((task) => (
-            <TaskTableRow key={task.id} task={task} projects={projects} />
+            <TaskTableRow
+              key={task.id}
+              task={task}
+              projects={projects}
+              showProjectColumn={showProjectColumn}
+            />
           ))}
         </TableBody>
       </Table>
+    </div>
+  );
+}
+
+export function TaskTable({
+  tasks,
+  projects,
+  currentParams,
+  groupByProject = false,
+}: {
+  tasks: Task[];
+  projects: { id: string; name: string }[];
+  currentParams: Record<string, string | undefined>;
+  groupByProject?: boolean;
+}) {
+  const sort = currentParams.sort ?? "status";
+  const sortDir = currentParams.sortDir ?? "asc";
+
+  if (tasks.length === 0) {
+    return (
+      <EmptyState
+        icon={SearchX}
+        title="Geen taken gevonden"
+        description="Pas de filters aan of maak een nieuwe taak aan."
+      />
+    );
+  }
+
+  if (!groupByProject) {
+    return (
+      <TaskTableGroup
+        tasks={tasks}
+        projects={projects}
+        sort={sort}
+        sortDir={sortDir}
+        currentParams={currentParams}
+        showProjectColumn
+      />
+    );
+  }
+
+  const groups = new Map<string, { label: string; tasks: Task[] }>();
+  for (const task of tasks) {
+    const key = task.project_id ?? "internal";
+    if (!groups.has(key)) {
+      const label = task.project_id
+        ? (projects.find((p) => p.id === task.project_id)?.name ?? "Onbekend project")
+        : "Intern";
+      groups.set(key, { label, tasks: [] });
+    }
+    groups.get(key)!.tasks.push(task);
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {Array.from(groups.values()).map((group) => (
+        <div key={group.label}>
+          <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+            {group.label}
+          </h3>
+          <TaskTableGroup
+            tasks={group.tasks}
+            projects={projects}
+            sort={sort}
+            sortDir={sortDir}
+            currentParams={currentParams}
+            showProjectColumn={false}
+          />
+        </div>
+      ))}
     </div>
   );
 }

@@ -1,6 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
-import { toTask, type Task, type TaskStatus, type TaskUrgency } from "@/lib/types";
+import {
+  toTask,
+  TASK_STATUSES,
+  type Task,
+  type TaskStatus,
+  type TaskUrgency,
+} from "@/lib/types";
 
 type Client = SupabaseClient<Database>;
 
@@ -47,8 +53,29 @@ export async function listTasks(
   let query = client.from("tasks").select("*");
   query = applyFilters(query, filters);
 
-  const sortColumn = filters.sort ?? "created_at";
-  const ascending = filters.sortDir ? filters.sortDir === "asc" : false;
+  const sortColumn = filters.sort ?? "status";
+
+  // "status" isn't a plain text column PostgREST can order alphabetically
+  // into a meaningful sequence (backlog < done alphabetically already, but
+  // doing/feedback/todo would land in the wrong spots) — sort it in JS
+  // against the fixed pipeline order instead, keeping a stable created_at
+  // tie-breaker for tasks that share a status.
+  if (sortColumn === "status") {
+    const ascending = filters.sortDir !== "desc";
+    query = query.order("created_at", { ascending: false });
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const tasks = (data ?? []).map(toTask);
+    tasks.sort((a, b) => {
+      const diff = TASK_STATUSES.indexOf(a.status) - TASK_STATUSES.indexOf(b.status);
+      return ascending ? diff : -diff;
+    });
+    return tasks;
+  }
+
+  const ascending = filters.sortDir === "asc";
   query = query.order(sortColumn, { ascending, nullsFirst: false });
 
   const { data, error } = await query;
@@ -69,27 +96,48 @@ export async function listTasksForBoard(
   return (data ?? []).map(toTask);
 }
 
+// Tasks don't carry their own archived state — it's inherited from their
+// (optional) project. Dashboard widgets should hide tasks belonging to an
+// archived project, so filter those out in JS after fetching rather than
+// risk composing a fragile multi-condition PostgREST query string.
+async function getArchivedProjectIds(client: Client): Promise<Set<string>> {
+  const { data, error } = await client
+    .from("projects")
+    .select("id")
+    .not("archived_at", "is", null);
+  if (error) throw error;
+  return new Set((data ?? []).map((p) => p.id));
+}
+
 export async function getDashboardUrgentTasks(client: Client): Promise<Task[]> {
   const today = new Date();
   const inSevenDays = new Date(today);
   inSevenDays.setDate(inSevenDays.getDate() + 7);
   const deadlineCutoff = inSevenDays.toISOString().slice(0, 10);
 
-  const { data, error } = await client
-    .from("tasks")
-    .select("*")
-    .neq("status", "done")
-    .or(`deadline.lte.${deadlineCutoff},urgency.in.(high,urgent)`)
-    .order("deadline", { ascending: true, nullsFirst: false });
+  const [{ data, error }, archivedProjectIds] = await Promise.all([
+    client
+      .from("tasks")
+      .select("*")
+      .neq("status", "done")
+      .or(`deadline.lte.${deadlineCutoff},urgency.in.(high,urgent)`)
+      .order("deadline", { ascending: true, nullsFirst: false }),
+    getArchivedProjectIds(client),
+  ]);
 
   if (error) throw error;
-  return (data ?? []).map(toTask);
+  return (data ?? [])
+    .filter((row) => !row.project_id || !archivedProjectIds.has(row.project_id))
+    .map(toTask);
 }
 
 export async function getTaskStatusCounts(
   client: Client
 ): Promise<Record<TaskStatus, number>> {
-  const { data, error } = await client.from("tasks").select("status");
+  const [{ data, error }, archivedProjectIds] = await Promise.all([
+    client.from("tasks").select("status, project_id"),
+    getArchivedProjectIds(client),
+  ]);
   if (error) throw error;
 
   const counts: Record<TaskStatus, number> = {
@@ -100,6 +148,7 @@ export async function getTaskStatusCounts(
     done: 0,
   };
   for (const row of data ?? []) {
+    if (row.project_id && archivedProjectIds.has(row.project_id)) continue;
     counts[row.status as TaskStatus] += 1;
   }
   return counts;

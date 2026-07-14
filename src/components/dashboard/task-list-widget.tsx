@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { UrgencyDot } from "@/components/tasks/urgency-badge";
+import { DeadlineLabel } from "@/components/tasks/deadline-label";
 import { QuickAddTask } from "@/components/tasks/quick-add-task";
 import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
 import type { Task } from "@/lib/types";
@@ -42,10 +43,6 @@ export function TaskListWidget({
               const projectName = task.project_id
                 ? projects.find((p) => p.id === task.project_id)?.name
                 : undefined;
-              const isOverdue =
-                task.deadline &&
-                task.status !== "done" &&
-                task.deadline < new Date().toISOString().slice(0, 10);
               return (
                 <li key={task.id}>
                   <button
@@ -62,15 +59,7 @@ export function TaskListWidget({
                     </span>
                     <span className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
                       <span>{projectName ?? "Intern"}</span>
-                      {task.deadline && (
-                        <span
-                          className={
-                            isOverdue ? "font-medium text-red-600 dark:text-red-400" : undefined
-                          }
-                        >
-                          {task.deadline}
-                        </span>
-                      )}
+                      <DeadlineLabel deadline={task.deadline} status={task.status} />
                     </span>
                   </button>
                 </li>

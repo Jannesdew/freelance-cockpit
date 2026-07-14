@@ -8,6 +8,8 @@ import { ProjectStatusBadge } from "@/components/projects/status-badge";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { ArchiveProjectButton } from "@/components/projects/archive-project-button";
 import { TaskListSection } from "@/components/tasks/task-list-section";
+import { formatDate, formatRelativeDeadline } from "@/lib/date";
+import { cn } from "@/lib/utils";
 
 export default async function ProjectDetailPage({
   params,
@@ -77,8 +79,21 @@ export default async function ProjectDetailPage({
       )}
 
       <div className="mt-4 flex gap-6 text-sm text-muted-foreground">
-        {project.start_date && <span>Start: {project.start_date}</span>}
-        {project.end_date && <span>Deadline: {project.end_date}</span>}
+        {project.start_date && <span>Start: {formatDate(project.start_date)}</span>}
+        {project.end_date && (
+          <span>
+            Deadline:{" "}
+            <span
+              className={cn(
+                formatRelativeDeadline(project.end_date).isOverdue &&
+                  project.status !== "afgerond" &&
+                  "font-medium text-red-600 dark:text-red-400"
+              )}
+            >
+              {formatRelativeDeadline(project.end_date).label}
+            </span>
+          </span>
+        )}
       </div>
 
       <div className="mt-10">

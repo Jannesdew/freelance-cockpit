@@ -38,7 +38,9 @@ export default async function BoardPage({
       </div>
 
       <div className="mt-4 flex flex-col gap-3">
-        <TaskFilters projects={projectOptions} />
+        <div className="flex items-center gap-2">
+          <TaskFilters projects={projectOptions} />
+        </div>
         <QuickAddTask
           projectId={params.project as string | "internal" | undefined}
         />

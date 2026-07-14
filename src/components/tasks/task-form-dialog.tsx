@@ -23,6 +23,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { UrgencyDot } from "@/components/tasks/urgency-badge";
+import { TaskStatusIcon } from "@/components/projects/status-badge";
 import {
   createTaskAction,
   updateTaskAction,
@@ -151,12 +152,18 @@ export function TaskFormDialog({
               <Select value={status} onValueChange={(v) => setStatus(v as TaskStatus)}>
                 <SelectTrigger id="status" className="w-full">
                   <SelectValue>
-                    {(value: TaskStatus) => TASK_STATUS_LABELS[value]}
+                    {(value: TaskStatus) => (
+                      <>
+                        <TaskStatusIcon status={value} />
+                        {TASK_STATUS_LABELS[value]}
+                      </>
+                    )}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {TASK_STATUSES.map((s) => (
                     <SelectItem key={s} value={s}>
+                      <TaskStatusIcon status={s} />
                       {TASK_STATUS_LABELS[s]}
                     </SelectItem>
                   ))}
@@ -171,7 +178,12 @@ export function TaskFormDialog({
               >
                 <SelectTrigger id="urgency" className="w-full">
                   <SelectValue>
-                    {(value: TaskUrgency) => TASK_URGENCY_LABELS[value]}
+                    {(value: TaskUrgency) => (
+                      <>
+                        <UrgencyDot urgency={value} />
+                        {TASK_URGENCY_LABELS[value]}
+                      </>
+                    )}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>

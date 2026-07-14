@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { TableCell, TableRow } from "@/components/ui/table";
 import {
@@ -11,40 +12,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UrgencyBadge } from "@/components/tasks/urgency-badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
+import { UrgencyDot } from "@/components/tasks/urgency-badge";
+import { TaskStatusIcon } from "@/components/projects/status-badge";
+import { DeadlineLabel } from "@/components/tasks/deadline-label";
 import { TaskDetailSheet } from "@/components/tasks/task-detail-sheet";
-import { updateTaskStatusAction } from "@/app/(app)/tasks/actions";
+import { updateTaskAction } from "@/app/(app)/tasks/actions";
+import type { TaskInput } from "@/lib/services/tasks";
 import {
   TASK_STATUSES,
   TASK_STATUS_LABELS,
+  TASK_URGENCIES,
+  TASK_URGENCY_LABELS,
   type Task,
   type TaskStatus,
+  type TaskUrgency,
 } from "@/lib/types";
 
 export function TaskTableRow({
   task,
   projects,
+  showProjectColumn = true,
 }: {
   task: Task;
   projects: { id: string; name: string }[];
+  showProjectColumn?: boolean;
 }) {
   const router = useRouter();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isDateOpen, setIsDateOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
 
   const projectName = projects.find((p) => p.id === task.project_id)?.name;
-  const isOverdue =
-    task.deadline &&
-    task.status !== "done" &&
-    task.deadline < new Date().toISOString().slice(0, 10);
 
-  async function handleStatusChange(status: TaskStatus) {
+  async function applyPatch(patch: Partial<TaskInput>, errorMessage: string) {
     setIsBusy(true);
     try {
-      await updateTaskStatusAction(task.id, status);
+      await updateTaskAction(task.id, patch);
       router.refresh();
     } catch (error) {
-      toast.error("Status wijzigen mislukt", {
+      toast.error(errorMessage, {
         description: error instanceof Error ? error.message : undefined,
       });
     } finally {
@@ -61,23 +70,33 @@ export function TaskTableRow({
         >
           {task.title}
         </TableCell>
-        <TableCell className="text-muted-foreground">
-          {projectName ?? "Intern"}
-        </TableCell>
+        {showProjectColumn && (
+          <TableCell className="text-muted-foreground">
+            {projectName ?? "Intern"}
+          </TableCell>
+        )}
         <TableCell>
           <Select
             value={task.status}
-            onValueChange={(v) => handleStatusChange(v as TaskStatus)}
+            onValueChange={(v) =>
+              applyPatch({ status: v as TaskStatus }, "Status wijzigen mislukt")
+            }
             disabled={isBusy}
           >
             <SelectTrigger size="sm">
               <SelectValue>
-                {(value: TaskStatus) => TASK_STATUS_LABELS[value]}
+                {(value: TaskStatus) => (
+                  <>
+                    <TaskStatusIcon status={value} />
+                    {TASK_STATUS_LABELS[value]}
+                  </>
+                )}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {TASK_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
+                  <TaskStatusIcon status={s} />
                   {TASK_STATUS_LABELS[s]}
                 </SelectItem>
               ))}
@@ -85,12 +104,80 @@ export function TaskTableRow({
           </Select>
         </TableCell>
         <TableCell>
-          <UrgencyBadge urgency={task.urgency} />
+          <Select
+            value={task.urgency}
+            onValueChange={(v) =>
+              applyPatch({ urgency: v as TaskUrgency }, "Urgentie wijzigen mislukt")
+            }
+            disabled={isBusy}
+          >
+            <SelectTrigger size="sm">
+              <SelectValue>
+                {(value: TaskUrgency) => (
+                  <>
+                    <UrgencyDot urgency={value} />
+                    {TASK_URGENCY_LABELS[value]}
+                  </>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {TASK_URGENCIES.map((u) => (
+                <SelectItem key={u} value={u}>
+                  <UrgencyDot urgency={u} />
+                  {TASK_URGENCY_LABELS[u]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </TableCell>
-        <TableCell
-          className={isOverdue ? "font-medium text-red-600 dark:text-red-400" : undefined}
-        >
-          {task.deadline ?? "—"}
+        <TableCell>
+          <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
+            <PopoverTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isBusy}
+                  className="h-7 px-2 font-normal"
+                />
+              }
+            >
+              {task.deadline ? (
+                <DeadlineLabel deadline={task.deadline} status={task.status} />
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={task.deadline ? new Date(`${task.deadline}T00:00:00`) : undefined}
+                onSelect={(date) => {
+                  applyPatch(
+                    { deadline: date ? format(date, "yyyy-MM-dd") : null },
+                    "Deadline wijzigen mislukt"
+                  );
+                  setIsDateOpen(false);
+                }}
+              />
+              {task.deadline && (
+                <div className="border-t p-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      applyPatch({ deadline: null }, "Deadline wijzigen mislukt");
+                      setIsDateOpen(false);
+                    }}
+                  >
+                    Deadline verwijderen
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
         </TableCell>
       </TableRow>
       <TaskDetailSheet

@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UrgencyBadge } from "@/components/tasks/urgency-badge";
+import { TaskStatusIcon } from "@/components/projects/status-badge";
+import { DeadlineLabel } from "@/components/tasks/deadline-label";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
 import {
   deleteTaskAction,
@@ -100,12 +102,18 @@ export function TaskDetailSheet({
               >
                 <SelectTrigger className="w-full">
                   <SelectValue>
-                    {(value: TaskStatus) => TASK_STATUS_LABELS[value]}
+                    {(value: TaskStatus) => (
+                      <>
+                        <TaskStatusIcon status={value} />
+                        {TASK_STATUS_LABELS[value]}
+                      </>
+                    )}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {TASK_STATUSES.map((s) => (
                     <SelectItem key={s} value={s}>
+                      <TaskStatusIcon status={s} />
                       {TASK_STATUS_LABELS[s]}
                     </SelectItem>
                   ))}
@@ -124,7 +132,7 @@ export function TaskDetailSheet({
             {task.deadline && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Deadline</span>
-                <span>{task.deadline}</span>
+                <DeadlineLabel deadline={task.deadline} status={task.status} />
               </div>
             )}
             {task.description && (
