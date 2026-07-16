@@ -22,6 +22,7 @@ import { UrgencyBadge } from "@/components/tasks/urgency-badge";
 import { TaskStatusIcon } from "@/components/projects/status-badge";
 import { DeadlineLabel } from "@/components/tasks/deadline-label";
 import { TaskFormDialog } from "@/components/tasks/task-form-dialog";
+import { SubtaskChecklist } from "@/components/tasks/subtask-checklist";
 import {
   deleteTaskAction,
   updateTaskStatusAction,
@@ -141,6 +142,8 @@ export function TaskDetailSheet({
                 <p className="mt-1 whitespace-pre-wrap text-sm">{task.description}</p>
               </div>
             )}
+
+            <SubtaskChecklist taskId={task.id} />
           </div>
           <SheetFooter className="flex-row justify-end gap-2">
             <Button

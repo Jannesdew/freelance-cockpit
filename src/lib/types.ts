@@ -52,6 +52,7 @@ type TaskRow = Database["public"]["Tables"]["tasks"]["Row"];
 type ProjectProgressRow = Database["public"]["Views"]["project_progress"]["Row"];
 type ProjectTemplateRow = Database["public"]["Tables"]["project_templates"]["Row"];
 type FinancialDocumentRow = Database["public"]["Tables"]["financial_documents"]["Row"];
+export type Subtask = Database["public"]["Tables"]["subtasks"]["Row"];
 
 export type Project = Omit<ProjectRow, "status"> & { status: ProjectStatus };
 export type Task = Omit<TaskRow, "status" | "urgency"> & {

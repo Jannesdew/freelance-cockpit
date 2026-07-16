@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import * as tasksService from "@/lib/services/tasks";
+import * as subtasksService from "@/lib/services/subtasks";
 import type { TaskInput } from "@/lib/services/tasks";
 import type { TaskStatus } from "@/lib/types";
 
@@ -64,4 +65,31 @@ export async function deleteTaskAction(id: string) {
   const supabase = await createClient();
   await tasksService.deleteTask(supabase, id);
   revalidateTaskViews();
+}
+
+export async function listSubtasksAction(taskId: string) {
+  const supabase = await createClient();
+  return subtasksService.listSubtasks(supabase, taskId);
+}
+
+export async function createSubtaskAction(taskId: string, title: string) {
+  if (!title.trim()) throw new Error("Titel is verplicht");
+  const supabase = await createClient();
+  return subtasksService.createSubtask(supabase, taskId, title.trim());
+}
+
+export async function updateSubtaskAction(
+  id: string,
+  patch: { title?: string; is_done?: boolean }
+) {
+  if (patch.title !== undefined && !patch.title.trim()) {
+    throw new Error("Titel is verplicht");
+  }
+  const supabase = await createClient();
+  return subtasksService.updateSubtask(supabase, id, patch);
+}
+
+export async function deleteSubtaskAction(id: string) {
+  const supabase = await createClient();
+  await subtasksService.deleteSubtask(supabase, id);
 }
