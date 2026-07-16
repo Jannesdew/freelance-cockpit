@@ -34,6 +34,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      financial_documents: {
+        Row: {
+          amount_excl: number
+          amount_incl: number
+          created_at: string
+          description: string | null
+          document_date: string | null
+          id: string
+          imported_at: string
+          kind: string
+          number: string
+          project_id: string | null
+          relation_name: string | null
+          status: string
+          status_override: boolean
+          updated_at: string
+          user_id: string
+          vat_amount: number
+        }
+        Insert: {
+          amount_excl?: number
+          amount_incl?: number
+          created_at?: string
+          description?: string | null
+          document_date?: string | null
+          id?: string
+          imported_at?: string
+          kind: string
+          number: string
+          project_id?: string | null
+          relation_name?: string | null
+          status: string
+          status_override?: boolean
+          updated_at?: string
+          user_id: string
+          vat_amount?: number
+        }
+        Update: {
+          amount_excl?: number
+          amount_incl?: number
+          created_at?: string
+          description?: string | null
+          document_date?: string | null
+          id?: string
+          imported_at?: string
+          kind?: string
+          number?: string
+          project_id?: string | null
+          relation_name?: string | null
+          status?: string
+          status_override?: boolean
+          updated_at?: string
+          user_id?: string
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project_progress"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "financial_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_templates: {
         Row: {
           created_at: string

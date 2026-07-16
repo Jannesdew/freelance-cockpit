@@ -3,12 +3,15 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProject, listProjects } from "@/lib/services/projects";
 import { listTasks } from "@/lib/services/tasks";
+import { listFinancialDocuments } from "@/lib/services/financial-documents";
 import { Button } from "@/components/ui/button";
 import { ProjectStatusBadge } from "@/components/projects/status-badge";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
 import { ArchiveProjectButton } from "@/components/projects/archive-project-button";
 import { TaskListSection } from "@/components/tasks/task-list-section";
+import { FinancialDocumentsTable } from "@/components/financials/financial-documents-table";
 import { formatDate, formatRelativeDeadline } from "@/lib/date";
+import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export default async function ProjectDetailPage({
@@ -22,10 +25,18 @@ export default async function ProjectDetailPage({
 
   if (!project) notFound();
 
-  const [tasks, allProjects] = await Promise.all([
+  const [tasks, allProjects, financialDocuments] = await Promise.all([
     listTasks(supabase, { projectId: id }),
     listProjects(supabase),
+    listFinancialDocuments(supabase, { projectId: id }),
   ]);
+
+  const invoicedTotal = financialDocuments
+    .filter((d) => d.kind === "invoice")
+    .reduce((sum, d) => sum + Number(d.amount_incl), 0);
+  const paidTotal = financialDocuments
+    .filter((d) => d.kind === "invoice" && d.status === "Betaald")
+    .reduce((sum, d) => sum + Number(d.amount_incl), 0);
 
   return (
     <div>
@@ -103,6 +114,22 @@ export default async function ProjectDetailPage({
           defaultProjectId={project.id}
         />
       </div>
+
+      {financialDocuments.length > 0 && (
+        <div className="mt-10">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Facturen & offertes</h2>
+            <p className="text-sm text-muted-foreground">
+              Gefactureerd: {formatCurrency(invoicedTotal)} · Betaald: {formatCurrency(paidTotal)}
+            </p>
+          </div>
+          <FinancialDocumentsTable
+            documents={financialDocuments}
+            projects={allProjects.map((p) => ({ id: p.id, name: p.name }))}
+            showProjectColumn={false}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -39,10 +39,19 @@ export const TASK_URGENCY_LABELS: Record<TaskUrgency, string> = {
   urgent: "Urgent",
 };
 
+export type FinancialDocumentKind = "invoice" | "quote";
+
+// Business-logic progression of a quote's lifecycle; unrecognized statuses
+// (any future DigiBoox label) are appended at the end in first-seen order
+// rather than dropped, so nothing is ever silently lost.
+export const QUOTE_STATUS_ORDER = ["Open", "Verzonden", "Geaccepteerd", "Gefactureerd", "Afgewezen", "Verlopen"];
+export const INVOICE_STATUS_OPTIONS = ["Betaald", "Niet betaald"];
+
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 type TaskRow = Database["public"]["Tables"]["tasks"]["Row"];
 type ProjectProgressRow = Database["public"]["Views"]["project_progress"]["Row"];
 type ProjectTemplateRow = Database["public"]["Tables"]["project_templates"]["Row"];
+type FinancialDocumentRow = Database["public"]["Tables"]["financial_documents"]["Row"];
 
 export type Project = Omit<ProjectRow, "status"> & { status: ProjectStatus };
 export type Task = Omit<TaskRow, "status" | "urgency"> & {
@@ -79,6 +88,14 @@ export type ProjectTemplate = Omit<ProjectTemplateRow, "tasks"> & {
 
 export function toProjectTemplate(row: ProjectTemplateRow): ProjectTemplate {
   return { ...row, tasks: (row.tasks as ProjectTemplateTask[] | null) ?? [] };
+}
+
+export type FinancialDocument = Omit<FinancialDocumentRow, "kind"> & {
+  kind: FinancialDocumentKind;
+};
+
+export function toFinancialDocument(row: FinancialDocumentRow): FinancialDocument {
+  return { ...row, kind: row.kind as FinancialDocumentKind };
 }
 
 export function toProjectWithProgress(

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import {
+  Euro,
   FolderKanban,
   Kanban,
   LayoutDashboard,
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { href: "/board", label: "Board", icon: Kanban },
   { href: "/list", label: "Lijst", icon: List },
   { href: "/templates", label: "Sjablonen", icon: LayoutTemplate },
+  { href: "/financials", label: "Financieel", icon: Euro },
 ];
 
 export function AppSidebar({

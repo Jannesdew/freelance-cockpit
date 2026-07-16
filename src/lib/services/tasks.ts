@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { format, isBefore, startOfWeek, subWeeks } from "date-fns";
 import type { Database } from "@/lib/database.types";
 import {
   toTask,
@@ -152,6 +153,48 @@ export async function getTaskStatusCounts(
     counts[row.status as TaskStatus] += 1;
   }
   return counts;
+}
+
+export type WeeklyCompletedCount = { weekStart: string; label: string; count: number };
+
+export async function getWeeklyCompletedTasks(
+  client: Client,
+  weeks = 8
+): Promise<WeeklyCompletedCount[]> {
+  const now = new Date();
+  const earliestWeekStart = startOfWeek(subWeeks(now, weeks - 1), { weekStartsOn: 1 });
+
+  const [{ data, error }, archivedProjectIds] = await Promise.all([
+    client
+      .from("tasks")
+      .select("completed_at, project_id")
+      .not("completed_at", "is", null)
+      .gte("completed_at", earliestWeekStart.toISOString()),
+    getArchivedProjectIds(client),
+  ]);
+  if (error) throw error;
+
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) {
+    if (!row.completed_at) continue;
+    if (row.project_id && archivedProjectIds.has(row.project_id)) continue;
+    const weekStart = startOfWeek(new Date(row.completed_at), { weekStartsOn: 1 });
+    const key = format(weekStart, "yyyy-MM-dd");
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const result: WeeklyCompletedCount[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const weekStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
+    if (isBefore(now, weekStart)) continue;
+    const key = format(weekStart, "yyyy-MM-dd");
+    result.push({
+      weekStart: key,
+      label: format(weekStart, "d MMM"),
+      count: counts.get(key) ?? 0,
+    });
+  }
+  return result;
 }
 
 export async function getInternalTasks(client: Client): Promise<Task[]> {
