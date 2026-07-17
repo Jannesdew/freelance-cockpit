@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProject, listProjects } from "@/lib/services/projects";
 import { listTasks } from "@/lib/services/tasks";
-import { listFinancialDocuments } from "@/lib/services/financial-documents";
+import { groupFinancialDocuments, listFinancialDocuments } from "@/lib/services/financial-documents";
 import { Button } from "@/components/ui/button";
 import { ProjectStatusBadge } from "@/components/projects/status-badge";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
@@ -124,7 +124,7 @@ export default async function ProjectDetailPage({
             </p>
           </div>
           <FinancialDocumentsTable
-            documents={financialDocuments}
+            documents={groupFinancialDocuments(financialDocuments)}
             projects={allProjects.map((p) => ({ id: p.id, name: p.name }))}
             showProjectColumn={false}
           />

@@ -21,13 +21,16 @@ import {
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FileX, PenLine } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import {
   updateFinancialDocumentProjectAction,
   updateFinancialDocumentStatusAction,
 } from "@/app/(app)/financials/actions";
-import { INVOICE_STATUS_OPTIONS, QUOTE_STATUS_ORDER, type FinancialDocument } from "@/lib/types";
+import { INVOICE_STATUS_OPTIONS, QUOTE_STATUS_ORDER } from "@/lib/types";
+import { FinancialStatusIcon } from "@/components/financials/financial-status-badge";
+import type { FinancialDocumentWithGroup } from "@/lib/services/financial-documents";
 
 const NO_PROJECT_VALUE = "none";
 const KIND_LABELS = { invoice: "Factuur", quote: "Offerte" } as const;
@@ -37,10 +40,12 @@ function DocumentRow({
   doc,
   projects,
   showProjectColumn,
+  banded,
 }: {
-  doc: FinancialDocument;
+  doc: FinancialDocumentWithGroup;
   projects: { id: string; name: string }[];
   showProjectColumn: boolean;
+  banded: boolean;
 }) {
   const router = useRouter();
   const [isBusy, setIsBusy] = useState(false);
@@ -81,21 +86,38 @@ function DocumentRow({
     ? STATUS_OPTIONS[doc.kind]
     : [...STATUS_OPTIONS[doc.kind], doc.status];
 
+  const showLinkHint = doc.kind === "invoice" && doc.linkedNumber && doc.groupKey.startsWith("quote:");
+
   return (
-    <TableRow>
+    <TableRow className={cn(banded && "bg-muted/30")}>
       <TableCell>
         <Badge variant="outline">{KIND_LABELS[doc.kind]}</Badge>
       </TableCell>
-      <TableCell className="font-medium">{doc.number}</TableCell>
+      <TableCell className="font-medium">
+        {doc.number}
+        {showLinkHint && (
+          <div className="text-xs font-normal text-muted-foreground">
+            ↳ offerte {doc.linkedNumber}
+          </div>
+        )}
+      </TableCell>
       <TableCell>
         <div className="flex items-center gap-1.5">
           <Select value={doc.status} onValueChange={handleStatusChange} disabled={isBusy}>
             <SelectTrigger size="sm">
-              <SelectValue />
+              <SelectValue>
+                {(value: string) => (
+                  <>
+                    <FinancialStatusIcon status={value} />
+                    {value}
+                  </>
+                )}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {statusOptions.map((s) => (
                 <SelectItem key={s} value={s}>
+                  <FinancialStatusIcon status={s} />
                   {s}
                 </SelectItem>
               ))}
@@ -150,7 +172,7 @@ export function FinancialDocumentsTable({
   projects,
   showProjectColumn = true,
 }: {
-  documents: FinancialDocument[];
+  documents: FinancialDocumentWithGroup[];
   projects: { id: string; name: string }[];
   showProjectColumn?: boolean;
 }) {
@@ -159,10 +181,12 @@ export function FinancialDocumentsTable({
       <EmptyState
         icon={FileX}
         title="Nog geen facturen of offertes"
-        description="Importeer een export uit DigiBoox om te beginnen."
+        description="Importeer een export uit DigiBoox om te beginnen, of pas de filters aan."
       />
     );
   }
+
+  const groupIndices = computeGroupIndices(documents);
 
   return (
     <div className="rounded-lg border">
@@ -179,16 +203,33 @@ export function FinancialDocumentsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {documents.map((doc) => (
+          {documents.map((doc, index) => (
             <DocumentRow
               key={doc.id}
               doc={doc}
               projects={projects}
               showProjectColumn={showProjectColumn}
+              banded={groupIndices[index] % 2 === 1}
             />
           ))}
         </TableBody>
       </Table>
     </div>
   );
+}
+
+// Assigns each document the index of its group (in first-seen order) so
+// adjacent rows from the same group can share an alternating background band.
+function computeGroupIndices(documents: FinancialDocumentWithGroup[]): number[] {
+  const indices: number[] = [];
+  let currentIndex = -1;
+  let previousKey: string | null = null;
+  for (const doc of documents) {
+    if (doc.groupKey !== previousKey) {
+      currentIndex += 1;
+      previousKey = doc.groupKey;
+    }
+    indices.push(currentIndex);
+  }
+  return indices;
 }

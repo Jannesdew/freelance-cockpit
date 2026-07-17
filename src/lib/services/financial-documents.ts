@@ -332,6 +332,60 @@ export async function getMonthlyRevenue(client: Client, months = 6): Promise<Mon
   return result;
 }
 
+// Matches how DigiBoox invoice descriptions reference their originating quote,
+// e.g. "Voorschot op Offerte 202606-02" or "OfferteNr: 202507-02".
+const OFFER_REFERENCE_PATTERN = /offerte\w*\s*:?\s*([a-z0-9]+-[a-z0-9]+)/i;
+
+export function extractReferencedQuoteNumber(description: string | null): string | null {
+  if (!description) return null;
+  return description.match(OFFER_REFERENCE_PATTERN)?.[1] ?? null;
+}
+
+export type FinancialDocumentWithGroup = FinancialDocument & {
+  linkedNumber: string | null;
+  groupKey: string;
+};
+
+// Clusters an invoice with the quote it was generated from (detected via the
+// invoice's description text) so related documents render next to each other
+// instead of purely by date.
+export function groupFinancialDocuments(
+  docs: FinancialDocument[]
+): FinancialDocumentWithGroup[] {
+  const quoteNumbers = new Set(docs.filter((d) => d.kind === "quote").map((d) => d.number));
+
+  const withKeys: FinancialDocumentWithGroup[] = docs.map((d) => {
+    const linkedNumber = d.kind === "invoice" ? extractReferencedQuoteNumber(d.description) : null;
+    const groupKey =
+      d.kind === "quote"
+        ? `quote:${d.number}`
+        : linkedNumber && quoteNumbers.has(linkedNumber)
+          ? `quote:${linkedNumber}`
+          : `${d.kind}:${d.number}`;
+    return { ...d, linkedNumber, groupKey };
+  });
+
+  const groups = new Map<string, FinancialDocumentWithGroup[]>();
+  for (const doc of withKeys) {
+    const group = groups.get(doc.groupKey);
+    if (group) group.push(doc);
+    else groups.set(doc.groupKey, [doc]);
+  }
+
+  const ordered = Array.from(groups.values());
+  for (const group of ordered) {
+    group.sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind === "quote" ? -1 : 1;
+      return (b.document_date ?? "").localeCompare(a.document_date ?? "");
+    });
+  }
+  ordered.sort(
+    (a, b) => (b[0].document_date ?? "").localeCompare(a[0].document_date ?? "")
+  );
+
+  return ordered.flat();
+}
+
 export type QuoteConversionStage = { status: string; count: number; amount: number };
 
 export async function getQuoteConversion(client: Client): Promise<QuoteConversionStage[]> {
