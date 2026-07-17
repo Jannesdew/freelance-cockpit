@@ -27,6 +27,8 @@ import {
   deleteTaskAction,
   updateTaskStatusAction,
 } from "@/app/(app)/tasks/actions";
+import { unscheduleTaskAction } from "@/app/(app)/agenda/actions";
+import { formatDateTime } from "@/lib/date";
 import {
   TASK_STATUSES,
   TASK_STATUS_LABELS,
@@ -61,6 +63,22 @@ export function TaskDetailSheet({
       router.refresh();
     } catch (error) {
       toast.error("Status wijzigen mislukt", {
+        description: error instanceof Error ? error.message : undefined,
+      });
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleUnschedule() {
+    if (!task) return;
+    setIsBusy(true);
+    try {
+      await unscheduleTaskAction(task.id);
+      toast.success("Taak uit agenda gehaald");
+      router.refresh();
+    } catch (error) {
+      toast.error("Deplannen mislukt", {
         description: error instanceof Error ? error.message : undefined,
       });
     } finally {
@@ -134,6 +152,29 @@ export function TaskDetailSheet({
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Deadline</span>
                 <DeadlineLabel deadline={task.deadline} status={task.status} />
+              </div>
+            )}
+            {task.estimated_minutes && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Geschatte duur</span>
+                <span>{task.estimated_minutes} min</span>
+              </div>
+            )}
+            {task.scheduled_start && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Gepland</span>
+                <div className="flex items-center gap-2">
+                  <span>{formatDateTime(task.scheduled_start)}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    disabled={isBusy}
+                    onClick={handleUnschedule}
+                  >
+                    Deplannen
+                  </Button>
+                </div>
               </div>
             )}
             {task.description && (

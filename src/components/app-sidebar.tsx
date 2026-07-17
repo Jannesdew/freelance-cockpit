@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import {
+  CalendarDays,
   Euro,
   FolderKanban,
   Kanban,
@@ -13,6 +14,7 @@ import {
   List,
   LogOut,
   Moon,
+  Settings,
   Sun,
 } from "lucide-react";
 import {
@@ -34,8 +36,10 @@ const NAV_ITEMS = [
   { href: "/projects", label: "Projecten", icon: FolderKanban },
   { href: "/board", label: "Board", icon: Kanban },
   { href: "/list", label: "Lijst", icon: List },
+  { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/templates", label: "Sjablonen", icon: LayoutTemplate },
   { href: "/financials", label: "Financieel", icon: Euro },
+  { href: "/settings", label: "Instellingen", icon: Settings },
 ];
 
 export function AppSidebar({

@@ -19,6 +19,7 @@ export type TaskInput = {
   urgency?: TaskUrgency;
   deadline?: string | null;
   position?: number;
+  estimated_minutes?: number | null;
 };
 
 export type TaskFilters = {
@@ -101,7 +102,7 @@ export async function listTasksForBoard(
 // (optional) project. Dashboard widgets should hide tasks belonging to an
 // archived project, so filter those out in JS after fetching rather than
 // risk composing a fragile multi-condition PostgREST query string.
-async function getArchivedProjectIds(client: Client): Promise<Set<string>> {
+export async function getArchivedProjectIds(client: Client): Promise<Set<string>> {
   const { data, error } = await client
     .from("projects")
     .select("id")
@@ -302,4 +303,35 @@ export async function reorderTasks(
 export async function deleteTask(client: Client, id: string): Promise<void> {
   const { error } = await client.from("tasks").delete().eq("id", id);
   if (error) throw error;
+}
+
+export async function listScheduledTasks(
+  client: Client,
+  range: { from: string; to: string }
+): Promise<Task[]> {
+  const { data, error } = await client
+    .from("tasks")
+    .select("*")
+    .gte("scheduled_start", range.from)
+    .lte("scheduled_start", range.to)
+    .order("scheduled_start");
+
+  if (error) throw error;
+  return (data ?? []).map(toTask);
+}
+
+export async function listUnscheduledTasks(client: Client): Promise<Task[]> {
+  const [{ data, error }, archivedProjectIds] = await Promise.all([
+    client
+      .from("tasks")
+      .select("*")
+      .is("scheduled_start", null)
+      .neq("status", "done")
+      .order("created_at", { ascending: false }),
+    getArchivedProjectIds(client),
+  ]);
+  if (error) throw error;
+  return (data ?? [])
+    .filter((row) => !row.project_id || !archivedProjectIds.has(row.project_id))
+    .map(toTask);
 }

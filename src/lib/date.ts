@@ -5,6 +5,11 @@ export function formatDate(dateString: string | null | undefined): string {
   return format(parseISO(dateString), "dd-MM-yyyy");
 }
 
+export function formatDateTime(dateString: string | null | undefined): string {
+  if (!dateString) return "";
+  return format(parseISO(dateString), "dd-MM-yyyy HH:mm");
+}
+
 export function formatRelativeDeadline(dateString: string): {
   label: string;
   isOverdue: boolean;

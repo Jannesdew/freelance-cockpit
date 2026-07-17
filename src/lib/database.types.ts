@@ -225,9 +225,13 @@ export type Database = {
           created_at: string
           deadline: string | null
           description: string | null
+          estimated_minutes: number | null
+          google_event_id: string | null
           id: string
           position: number
           project_id: string | null
+          scheduled_end: string | null
+          scheduled_start: string | null
           status: string
           title: string
           updated_at: string
@@ -239,9 +243,13 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: string | null
+          estimated_minutes?: number | null
+          google_event_id?: string | null
           id?: string
           position?: number
           project_id?: string | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -253,9 +261,13 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: string | null
+          estimated_minutes?: number | null
+          google_event_id?: string | null
           id?: string
           position?: number
           project_id?: string | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -278,6 +290,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          google_access_token: string | null
+          google_calendar_id: string | null
+          google_refresh_token: string | null
+          google_token_expires_at: string | null
+          timezone: string
+          updated_at: string
+          user_id: string
+          working_days: number[]
+          working_hours_end: string
+          working_hours_start: string
+        }
+        Insert: {
+          created_at?: string
+          google_access_token?: string | null
+          google_calendar_id?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id: string
+          working_days?: number[]
+          working_hours_end?: string
+          working_hours_start?: string
+        }
+        Update: {
+          created_at?: string
+          google_access_token?: string | null
+          google_calendar_id?: string | null
+          google_refresh_token?: string | null
+          google_token_expires_at?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+          working_days?: number[]
+          working_hours_end?: string
+          working_hours_start?: string
+        }
+        Relationships: []
       }
     }
     Views: {

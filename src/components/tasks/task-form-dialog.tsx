@@ -39,6 +39,8 @@ import {
 } from "@/lib/types";
 
 const INTERNAL_VALUE = "internal";
+const NO_DURATION_VALUE = "none";
+const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
 
 export function TaskFormDialog({
   task,
@@ -70,6 +72,9 @@ export function TaskFormDialog({
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? "backlog");
   const [urgency, setUrgency] = useState<TaskUrgency>(task?.urgency ?? "normal");
   const [deadline, setDeadline] = useState(task?.deadline ?? "");
+  const [estimatedMinutes, setEstimatedMinutes] = useState<string>(
+    task?.estimated_minutes ? String(task.estimated_minutes) : NO_DURATION_VALUE
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
@@ -83,6 +88,8 @@ export function TaskFormDialog({
       status,
       urgency,
       deadline: deadline || null,
+      estimated_minutes:
+        estimatedMinutes === NO_DURATION_VALUE ? null : Number(estimatedMinutes),
     };
 
     try {
@@ -197,14 +204,36 @@ export function TaskFormDialog({
               </Select>
             </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="deadline">Deadline</Label>
-            <Input
-              id="deadline"
-              type="date"
-              value={deadline ?? ""}
-              onChange={(e) => setDeadline(e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="deadline">Deadline</Label>
+              <Input
+                id="deadline"
+                type="date"
+                value={deadline ?? ""}
+                onChange={(e) => setDeadline(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="estimated_minutes">Geschatte duur</Label>
+              <Select value={estimatedMinutes} onValueChange={(v) => setEstimatedMinutes(v ?? NO_DURATION_VALUE)}>
+                <SelectTrigger id="estimated_minutes" className="w-full">
+                  <SelectValue>
+                    {(value: string) =>
+                      value === NO_DURATION_VALUE ? "Onbekend" : `${value} min`
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_DURATION_VALUE}>Onbekend</SelectItem>
+                  {DURATION_OPTIONS.map((minutes) => (
+                    <SelectItem key={minutes} value={String(minutes)}>
+                      {minutes} min
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="description">Omschrijving</Label>
